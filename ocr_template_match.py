@@ -14,6 +14,7 @@ args = vars(ap.parse_args())
 FIRST_NUMBER = {"3": "American Express", "4": "Visa", "5": "MasterCard", "6": "Discover Card"}
 print("=======")
 
+
 def cv_show(name, img):
     cv2.imshow(name, img)
     cv2.waitKey(0)
@@ -50,7 +51,7 @@ for (i, c) in enumerate(refCnts):
     (x, y, w, h) = cv2.boundingRect(c)
     # y:y + h, x:x + w ,先写y再写x，取的ref（二值化的大图）部分图
     roi = ref[y:y + h, x:x + w]
-    #放大
+    # 放大
     roi = cv2.resize(roi, (57, 88))
 
     # 每一个数字对应每一个模板，存入digits数组
@@ -69,7 +70,7 @@ gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 # 礼帽操作，突出更明亮的区域
 tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, rectKernel)
-cv_show('gray and tophat', tophat)
+# cv_show('gray and tophat', tophat)
 # ksize=-1 相当于用3*3的
 gradX = cv2.Sobel(tophat, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
 gradX = np.absolute(gradX)
@@ -78,18 +79,18 @@ gradX = np.absolute(gradX)
 gradX = (255 * ((gradX - minVal) / (maxVal - minVal)))
 gradX = gradX.astype("uint8")
 print(np.array(gradX).shape)
-cv_show('Sobel gradX', gradX)
+# cv_show('Sobel gradX', gradX)
 
 # 通过闭操作（先膨胀，再腐蚀）将4位数字连在一起
 gradX = cv2.morphologyEx(gradX, cv2.MORPH_CLOSE, rectKernel)
-cv_show('闭操作（先膨胀，再腐蚀） 4位数字连在一起', gradX)
+# cv_show('闭操作（先膨胀，再腐蚀） 4位数字连在一起', gradX)
 # 自动找阈值，THRESH_OTSU会自动寻找合适的阈值，适合双峰，需把阈值参数设置为0
 thresh = cv2.threshold(gradX, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-cv_show('自动找到的阈值 thresh', thresh)
+# cv_show('自动找到的阈值 thresh', thresh)
 
 # 现在每四个数字连一起了，但是中间可能有很多大的空隙，需要再闭操作一次
 thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rectKernel)
-cv_show('再次闭操作', thresh)
+# cv_show('再次闭操作', thresh)
 # 计算轮廓
 threshCnts, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 cnts = threshCnts
@@ -123,11 +124,11 @@ for (i, (gX, gY, gW, gH)) in enumerate(locs):
 
     # 根据坐标提取每一个组，+5 -5 是稍微扩大一些轮廓，更好检测
     group = gray[gY - 5:gY + gH + 5, gX - 5:gX + gW + 5]
-    cv_show('四个数字一组截取', group)
+    # cv_show('四个数字一组截取', group)
     # 预处理，自动计算阈值进行二值化
     group = cv2.threshold(group, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-    cv_show('group', group)
+    # cv_show('group', group)
     # 计算每一组的轮廓，并从左到右去排序，排序后其实就是每个数字的轮廓了
     digitCnts, hierarchy = cv2.findContours(group.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     digitCnts = contours.sort_contours(digitCnts, method="left-to-right")[0]
@@ -138,7 +139,7 @@ for (i, (gX, gY, gW, gH)) in enumerate(locs):
         (x, y, w, h) = cv2.boundingRect(c)
         roi = group[y:y + h, x:x + w]
         roi = cv2.resize(roi, (57, 88))
-        cv_show('roi', roi)
+        # cv_show('roi', roi)
 
         # 每个数字与0-9的模板数字匹配，保存得分
         scores = []
@@ -154,8 +155,8 @@ for (i, (gX, gY, gW, gH)) in enumerate(locs):
         groupOutput.append(str(np.argmax(scores)))
 
     # 在原图上画出来四组轮廓并在上面写上匹配的数字
-    cv2.rectangle(image, (gX - 5, gY - 5),(gX + gW + 5, gY + gH + 5), (0, 0, 255), 1)
-    cv2.putText(image, "".join(groupOutput), (gX, gY - 15),  cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 255), 2)
+    cv2.rectangle(image, (gX - 5, gY - 5), (gX + gW + 5, gY + gH + 5), (0, 0, 255), 1)
+    cv2.putText(image, "".join(groupOutput), (gX, gY - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 255), 2)
 
     # 得到结果
     output.extend(groupOutput)
@@ -163,5 +164,4 @@ for (i, (gX, gY, gW, gH)) in enumerate(locs):
 # 打印结果
 print("Credit Card Type: {}".format(FIRST_NUMBER[output[0]]))
 print("Credit Card #: {}".format("".join(output)))
-cv2.imshow("Image", image)
-cv2.waitKey(0)
+cv_show("result", image)
