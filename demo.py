@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt  # matplotlib库用于绘图展示
 import numpy as np  # numpy数值计算工具包
 
 img = cv2.imread('resource/01_cat.jpg')
-print(img.shape)  # (414, 500, 3)   (h,w,c) c表示 3 通道，这个 3 通道被 opencv 读进来是 BGR 的先后顺序的 3 通道
+print(img.shape)  # (414, 500, 3)   (h,w,c)或yxz c表示 3 通道，这个 3 通道被 opencv 读进来是 BGR 的先后顺序的 3 通道
 # 读取灰度图
 img_gray = cv2.imread('resource/01_cat.jpg', cv2.IMREAD_GRAYSCALE)
 print('type(img_gray):', type(img_gray))
@@ -318,7 +318,8 @@ CHAIN_APPROX_SIMPLE：压缩水平的、垂直的和斜的部分，也就是，�
 # 图像二值化
 img = cv2.imread('resource/08_Car.png')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)  # 大于 17 的取 255，小于 127 的取 0
+#返回的ret 是阈值，thresh是处理后的像素矩阵
+ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)  # 大于 127 的取 255，小于 127 的取 0
 # cv_show('thresh', thresh)
 # 轮廓检测
 contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
