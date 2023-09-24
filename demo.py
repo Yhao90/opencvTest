@@ -142,11 +142,11 @@ print(ret)
 titles = ['original Image', 'BINARY', 'BINARY_INV', 'TRUNC', 'TOZERO', 'TOZERO_INV']
 images = [img, thresh1, thresh2, thresh3, thresh4, thresh5]
 
-for i in range(6):
-    plt.subplot(2, 3, i + 1), plt.imshow(images[i], 'gray')
-    plt.title(titles[i])
-    plt.xticks([]), plt.yticks([])
-plt.show()
+# for i in range(6):
+#     plt.subplot(2, 3, i + 1), plt.imshow(images[i], 'gray')
+#     plt.title(titles[i])
+#     plt.xticks([]), plt.yticks([])
+# plt.show()
 
 '''
 图像平滑处理
@@ -318,7 +318,7 @@ CHAIN_APPROX_SIMPLE：压缩水平的、垂直的和斜的部分，也就是，�
 # 图像二值化
 img = cv2.imread('resource/08_Car.png')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#返回的ret 是阈值，thresh是处理后的像素矩阵
+# 返回的ret 是阈值，thresh是处理后的像素矩阵
 ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)  # 大于 127 的取 255，小于 127 的取 0
 # cv_show('thresh', thresh)
 # 轮廓检测
@@ -420,3 +420,95 @@ for pt in zip(*loc[::-1]):  # 当用 *b 作为传入参数时, b 可以为列表
 print('i:', i)  # 120
 # cv_show('img_rgb', img_rgb)
 
+'''
+角点检测
+harris角点检测函数：cv2.cornerHarris()
+img：数据类型为 ﬂoat32 的入图像。
+blockSize：角点检测中指定区域的大小。
+ksize：Sobel求导中使用的窗口大小。常用 3。
+k：取值参数为 [0,04,0.06]。常用 0.04。
+'''
+img = cv2.imread('resource/17_Chessboard.jpg')
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+print('res.shape:', gray.shape)
+gray = np.float32(gray)
+dst = cv2.cornerHarris(gray, 2, 3, 0.04)  # 每个点与对应点的相似性地值，即变化值
+print('dst.shape:', dst.shape)
+img[dst > 0.01 * dst.max()] = [0, 0, 255]  # 比相似性最大值的百分之一要大，则标注为角点
+# cv_show('dst', img)
+
+'''
+sift(尺度不变特征变换)特征点检测
+在一定的范围内，无论物体是大还是小，人眼都可以分辨出来，然而计算机要有相同的能力却很难，所以要让机器能够对物体在不同尺度下有一个统一的认知，
+就需要考虑图像在不同的尺度下都存在的特点
+高斯差分金字塔 (DOG) 差分结果较大的被视为比较重要的特征。
+特征匹配
+
+'''
+img = cv2.imread('resource/18_House.jpg')
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+sift = cv2.SIFT.create()  # 将 SIFT 算法实例化出来
+kp = sift.detect(gray, None)  # 把灰度图传进去，得到特征点、关键点
+img = cv2.drawKeypoints(gray, kp, img)
+# cv_show("sift", img)
+kp, des = sift.compute(gray, kp)  # 计算特征点
+print(np.array(kp).shape)  # 6809 个关键点
+print(des.shape)  # 每个关键点有 128 维向量
+print(des[0])  # 获得第 0 号关键点的值
+# 特征匹配
+img1 = cv2.imread('resource/19_Box.png', 0)
+img2 = cv2.imread('resource/20_Box_in_scene.png', 0)
+kp1, des1 = sift.detectAndCompute(img1, None)  # None是掩模
+kp2, des2 = sift.detectAndCompute(img2, None)
+# crossCheck 表示两个特征点要互相匹配，例如 A 中的第 i 个特征点与 B 中第 j 个特征点最近的，并且 B 中第 j 个特征点到 A 中的第 i 个特征点也是最近的。
+# 将两幅图像的特征点、特征向量算出来，用欧氏距离去比较特征向量相似性，一般情况下默认用的是归一化后的欧式距离去做，为了使得结果更均衡些。
+# 如果不用 sift 特征计算方法去做，而是用其他特征计算方法需要考虑不同的匹配方式,默认NORM_L2。
+# normType：如 NORM_L1, NORM_L2, NORM_HAMMING, NORM_HAMMING2.
+#             NORM_L1 和 NORM_L2 更适用于 SIFT 和 SURF 描述子;
+#             NORM_HAMMING 和 ORB、BRISK、BRIEF 一起使用；
+#             NORM_HAMMING2 用于 WTA_K==3或4 的 ORB 描述子.
+bf = cv2.BFMatcher(crossCheck=True)  # cv2.BFMatcher 蛮力匹配缩写
+# 然后是1对1的匹配
+matches = bf.match(des1, des2)
+matches = sorted(matches, key=lambda x: x.distance)
+img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches[:10], None, flags=2)  # 画出匹配结果前十个点
+# cv_show('img3', img3)
+# k对最佳匹配
+bf = cv2.BFMatcher()
+matches = bf.knnMatch(des1, des2, k=2)  # k 参数可选，可以一个点跟它最近的k个点可选
+good = []
+for m, n in matches:
+    # m.distance 与 n.distance 比值小于 0.75，这是自己设定的过滤条件
+    if m.distance < 0.75 * n.distance:
+        good.append([m])
+
+img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good, None, flags=2)
+cv_show('img3', img3)
+# 使用FLANN
+
+# FLANN，Fast Library for Approximate Nearest Neighbors. 其是针对大规模高维数据集进行快速最近邻搜索的优化算法库.
+# FLANN Matcher 需要设定两个字典参数，以指定算法和对应的参数，分别为 IndexParams 和 SearchParams.
+FLANN_INDEX_KDTREE = 0
+index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+search_params = dict(checks=50)  # or pass empty dictionary
+
+flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+matches = flann.knnMatch(des1, des2, k=2)
+
+# Need to draw only good matches, so create a mask
+matchesMask = [[0, 0] for i in range(len(matches))]
+
+# ratio test as per Lowe's paper
+for i, (m, n) in enumerate(matches):
+    if m.distance < 0.7 * n.distance:
+        matchesMask[i] = [1, 0]
+
+draw_params = dict(matchColor=(0, 255, 0),
+                   singlePointColor=(255, 0, 0),
+                   matchesMask=matchesMask,
+                   flags=0)
+
+img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, matches, None, **draw_params)
+# cv_show('img3', img3)
+# 使用随机抽样一致算法 (RANSAC) 过滤掉匹配不对的点,至少要有四对点。方式具体看图像拼接stich
